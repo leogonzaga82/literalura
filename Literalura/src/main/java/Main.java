@@ -1,5 +1,7 @@
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -27,17 +29,12 @@ public class Main {
                 List<Livro> livros = resposta.getResults();
 
                 System.out.println("📚 LIVROS ENCONTRADOS:");
+
                 for (Livro livro : livros) {
-                    System.out.println("Título: " + livro.getTitle());
-
-                    if (livro.getAuthors() != null && !livro.getAuthors().isEmpty()) {
-                        System.out.println("Autor: " + livro.getAuthors().get(0).getName());
-                    }
-
-                    System.out.println("Idiomas: " + livro.getLanguages());
-                    System.out.println("Downloads: " + livro.getDownload_count());
+                    System.out.println(livro);  // usa o toString()
                     System.out.println("----------------------------------");
                 }
+
             } else {
                 System.out.println("Erro: status HTTP " + response.statusCode());
             }
@@ -59,14 +56,25 @@ class RespostaApi {
     public void setResults(List<Livro> results) {
         this.results = results;
     }
+
+    @Override
+    public String toString() {
+        return "RespostaApi{" +
+                "results=" + results +
+                '}';
+    }
 }
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 class Livro {
     private String title;
+
     private List<Autor> authors;
+
     private List<String> languages;
-    private int download_count;
+
+    @JsonAlias("download_count")
+    private int downloadCount;
 
     public String getTitle() {
         return title;
@@ -92,12 +100,24 @@ class Livro {
         this.languages = languages;
     }
 
-    public int getDownload_count() {
-        return download_count;
+    public int getDownloadCount() {
+        return downloadCount;
     }
 
-    public void setDownload_count(int download_count) {
-        this.download_count = download_count;
+    public void setDownloadCount(int downloadCount) {
+        this.downloadCount = downloadCount;
+    }
+
+    @Override
+    public String toString() {
+        String autoresStr = (authors != null && !authors.isEmpty())
+                ? authors.get(0).getName()
+                : "Autor desconhecido";
+
+        return "Título: " + title + "\n" +
+                "Autor: " + autoresStr + "\n" +
+                "Idiomas: " + languages + "\n" +
+                "Downloads: " + downloadCount;
     }
 }
 
@@ -111,5 +131,10 @@ class Autor {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 }

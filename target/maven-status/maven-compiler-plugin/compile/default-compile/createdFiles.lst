@@ -1,0 +1,5 @@
+org\example\AutorRepository.class
+org\example\Autor.class
+org\example\Main.class
+org\example\Livro.class
+org\example\LivroRepository.class

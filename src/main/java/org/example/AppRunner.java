@@ -20,8 +20,8 @@ public class AppRunner implements CommandLineRunner {
         autorRepository.deleteAll();
 
         // Salva autores no banco
-        Autor orwell = autorRepository.save(new Autor("George Orwell"));
-        Autor machado = autorRepository.save(new Autor("Machado de Assis"));
+        Autor orwell = new Autor("George Orwell", 1903, 1950);
+        Autor machado = new Autor("Machado de Assis", 1839, 1908);
 
         // Cria livros referenciando autores persistidos
         Livro livro1 = new Livro("1984", 1949, "inglês", orwell);

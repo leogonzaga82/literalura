@@ -1,10 +1,12 @@
 package org.example;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Bean;
+
+import java.util.List;
+import java.util.Scanner;
 
 @SpringBootApplication
 public class Main {
@@ -13,44 +15,46 @@ public class Main {
         SpringApplication.run(Main.class, args);
     }
 
-    @Component
-    public class AppRunner implements CommandLineRunner {
-
-        @Autowired
-        private LivroRepository livroRepository;
-
-        @Autowired
-        private AutorRepository autorRepository;
-
-        @Override
-        public void run(String... args) throws Exception {
-            // Limpando o banco
+    @Bean
+    public CommandLineRunner run(AutorRepository autorRepository, LivroRepository livroRepository) {
+        return args -> {
+            // Apaga dados antigos pra facilitar testes
             livroRepository.deleteAll();
             autorRepository.deleteAll();
 
-            // Criando e salvando autores
-            Autor orwell = autorRepository.save(new Autor("George Orwell"));
-            Autor machado = autorRepository.save(new Autor("Machado de Assis"));
+            // Cria autores com ano nascimento e falecimento (null = vivo)
+            Autor orwell = new Autor("George Orwell", 1903, 1950);
+            Autor machado = new Autor("Machado de Assis", 1839, 1908);
+            Autor king = new Autor("Stephen King", 1947, null); // vivo
 
-            // Criando livros com autores já salvos
-            Livro livro1 = new Livro("1984", 1949, "inglês", orwell);
-            Livro livro2 = new Livro("Animal Farm", 1945, "inglês", orwell);
-            Livro livro3 = new Livro("Dom Casmurro", 1899, "português", machado);
-            Livro livro4 = new Livro("Memórias Póstumas de Brás Cubas", 1881, "português", machado);
+            autorRepository.saveAll(List.of(orwell, machado, king));
 
-            // Salvando os livros
-            livroRepository.save(livro1);
-            livroRepository.save(livro2);
-            livroRepository.save(livro3);
-            livroRepository.save(livro4);
+            // Cria livros associados aos autores
+            livroRepository.save(new Livro("1984", 1949, "en", orwell));
+            livroRepository.save(new Livro("A Revolução dos Bichos", 1945, "en", orwell));
+            livroRepository.save(new Livro("Dom Casmurro", 1899, "pt", machado));
+            livroRepository.save(new Livro("It", 1986, "en", king));
 
-            // Contando os livros por idioma
-            long countIngles = livroRepository.countByIdioma("inglês");
-            long countPortugues = livroRepository.countByIdioma("português");
+            // Pede ano para o usuário e lista autores vivos nesse ano
+            Scanner scanner = new Scanner(System.in);
+            System.out.print("Digite um ano para ver autores vivos: ");
 
-            // Mostrando no console
-            System.out.println("Livros em inglês: " + countIngles);
-            System.out.println("Livros em português: " + countPortugues);
-        }
+            try {
+                int ano = Integer.parseInt(scanner.nextLine());
+
+                List<Autor> autoresVivos = autorRepository.buscarAutoresVivosNoAno(ano);
+
+                if (autoresVivos.isEmpty()) {
+                    System.out.println("Nenhum autor estava vivo em " + ano);
+                } else {
+                    System.out.println("Autores vivos em " + ano + ":");
+                    for (Autor autor : autoresVivos) {
+                        System.out.println("- " + autor.getNome());
+                    }
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Ano inválido. Digite um número inteiro.");
+            }
+        };
     }
 }

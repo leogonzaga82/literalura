@@ -8,10 +8,54 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Scanner;
 
 public class Main {
+
     public static void main(String[] args) {
-        String url = "https://gutendex.com/books/?search=tolstoy";
+        Scanner scanner = new Scanner(System.in);
+        int opcao = -1;
+
+        while (opcao != 0) {
+            System.out.println("\n=== LITERALURA - Menu ===");
+            System.out.println("1 - Buscar livros por autor");
+            System.out.println("0 - Sair");
+            System.out.print("Escolha uma opção: ");
+
+            try {
+                String entrada = scanner.nextLine().trim();
+                if (entrada.isBlank()) {
+                    System.out.println("Entrada vazia. Tente novamente.");
+                    continue;
+                }
+                opcao = Integer.parseInt(entrada);
+
+                switch (opcao) {
+                    case 1:
+                        buscarLivrosPorAutor(scanner);
+                        break;
+                    case 0:
+                        System.out.println("Saindo da aplicação.");
+                        break;
+                    default:
+                        System.out.println("Opção inválida.");
+                }
+            } catch (Exception e) {
+                System.out.println("Erro: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void buscarLivrosPorAutor(Scanner scanner) {
+        System.out.print("Digite o nome do autor: ");
+        String nomeAutor = scanner.nextLine().trim();
+
+        if (nomeAutor.isBlank()) {
+            System.out.println("Nome do autor inválido.");
+            return;
+        }
+
+        String url = "https://gutendex.com/books/?search=" + nomeAutor.replace(" ", "%20");
 
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
@@ -28,13 +72,15 @@ public class Main {
                 RespostaApi resposta = mapper.readValue(json, RespostaApi.class);
                 List<Livro> livros = resposta.getResults();
 
-                System.out.println("📚 LIVROS ENCONTRADOS:");
-
-                for (Livro livro : livros) {
-                    System.out.println(livro);  // usa o toString()
-                    System.out.println("----------------------------------");
+                if (livros.isEmpty()) {
+                    System.out.println("Nenhum livro encontrado para o autor: " + nomeAutor);
+                } else {
+                    System.out.println("\n📚 LIVROS ENCONTRADOS:");
+                    for (Livro livro : livros) {
+                        System.out.println(livro);
+                        System.out.println("----------------------------------");
+                    }
                 }
-
             } else {
                 System.out.println("Erro: status HTTP " + response.statusCode());
             }
@@ -56,21 +102,12 @@ class RespostaApi {
     public void setResults(List<Livro> results) {
         this.results = results;
     }
-
-    @Override
-    public String toString() {
-        return "RespostaApi{" +
-                "results=" + results +
-                '}';
-    }
 }
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 class Livro {
     private String title;
-
     private List<Autor> authors;
-
     private List<String> languages;
 
     @JsonAlias("download_count")
@@ -80,28 +117,28 @@ class Livro {
         return title;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
     public List<Autor> getAuthors() {
         return authors;
-    }
-
-    public void setAuthors(List<Autor> authors) {
-        this.authors = authors;
     }
 
     public List<String> getLanguages() {
         return languages;
     }
 
-    public void setLanguages(List<String> languages) {
-        this.languages = languages;
-    }
-
     public int getDownloadCount() {
         return downloadCount;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public void setAuthors(List<Autor> authors) {
+        this.authors = authors;
+    }
+
+    public void setLanguages(List<String> languages) {
+        this.languages = languages;
     }
 
     public void setDownloadCount(int downloadCount) {
@@ -110,12 +147,12 @@ class Livro {
 
     @Override
     public String toString() {
-        String autoresStr = (authors != null && !authors.isEmpty())
+        String autor = (authors != null && !authors.isEmpty())
                 ? authors.get(0).getName()
                 : "Autor desconhecido";
 
         return "Título: " + title + "\n" +
-                "Autor: " + autoresStr + "\n" +
+                "Autor: " + autor + "\n" +
                 "Idiomas: " + languages + "\n" +
                 "Downloads: " + downloadCount;
     }

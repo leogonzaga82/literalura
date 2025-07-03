@@ -60,7 +60,6 @@ O sistema permite que o usuário interaja via terminal com as seguintes opções
 
 ---
 
-
 ## 🤝 Contribuições
 
 Projeto individual como parte do programa ONE da Alura e Oracle. Feedbacks são sempre bem-vindos!  

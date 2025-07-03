@@ -7,10 +7,11 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 public class Main {
+
+    private static final List<Livro> livrosBuscados = new ArrayList<>();
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
@@ -19,6 +20,11 @@ public class Main {
         while (opcao != 0) {
             System.out.println("\n=== LITERALURA - Menu ===");
             System.out.println("1 - Buscar livros por autor");
+            System.out.println("2 - Buscar livros por título");
+            System.out.println("3 - Listar todos os livros buscados");
+            System.out.println("4 - Listar livros por idioma");
+            System.out.println("5 - Listar autores dos livros buscados");
+            System.out.println("6 - Listar autores vivos em um determinado ano");
             System.out.println("0 - Sair");
             System.out.print("Escolha uma opção: ");
 
@@ -31,14 +37,14 @@ public class Main {
                 opcao = Integer.parseInt(entrada);
 
                 switch (opcao) {
-                    case 1:
-                        buscarLivrosPorAutor(scanner);
-                        break;
-                    case 0:
-                        System.out.println("Saindo da aplicação.");
-                        break;
-                    default:
-                        System.out.println("Opção inválida.");
+                    case 1 -> buscarLivrosPorAutor(scanner);
+                    case 2 -> buscarLivrosPorTitulo(scanner);
+                    case 3 -> listarTodosOsLivros();
+                    case 4 -> listarLivrosPorIdioma(scanner);
+                    case 5 -> listarAutores();
+                    case 6 -> listarAutoresVivosEmAno(scanner);
+                    case 0 -> System.out.println("Saindo da aplicação.");
+                    default -> System.out.println("Opção inválida.");
                 }
             } catch (Exception e) {
                 System.out.println("Erro: " + e.getMessage());
@@ -49,34 +55,41 @@ public class Main {
     private static void buscarLivrosPorAutor(Scanner scanner) {
         System.out.print("Digite o nome do autor: ");
         String nomeAutor = scanner.nextLine().trim();
-
         if (nomeAutor.isBlank()) {
             System.out.println("Nome do autor inválido.");
             return;
         }
+        buscarLivros("https://gutendex.com/books/?search=" + nomeAutor.replace(" ", "%20"));
+    }
 
-        String url = "https://gutendex.com/books/?search=" + nomeAutor.replace(" ", "%20");
+    private static void buscarLivrosPorTitulo(Scanner scanner) {
+        System.out.print("Digite o título do livro: ");
+        String titulo = scanner.nextLine().trim();
+        if (titulo.isBlank()) {
+            System.out.println("Título inválido.");
+            return;
+        }
+        buscarLivros("https://gutendex.com/books/?search=" + titulo.replace(" ", "%20"));
+    }
 
+    private static void buscarLivros(String url) {
         HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .build();
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
 
         try {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                String json = response.body();
-
                 ObjectMapper mapper = new ObjectMapper();
-                RespostaApi resposta = mapper.readValue(json, RespostaApi.class);
+                RespostaApi resposta = mapper.readValue(response.body(), RespostaApi.class);
                 List<Livro> livros = resposta.getResults();
 
                 if (livros.isEmpty()) {
-                    System.out.println("Nenhum livro encontrado para o autor: " + nomeAutor);
+                    System.out.println("Nenhum livro encontrado.");
                 } else {
                     System.out.println("\n📚 LIVROS ENCONTRADOS:");
                     for (Livro livro : livros) {
+                        livrosBuscados.add(livro);
                         System.out.println(livro);
                         System.out.println("----------------------------------");
                     }
@@ -84,9 +97,91 @@ public class Main {
             } else {
                 System.out.println("Erro: status HTTP " + response.statusCode());
             }
-
         } catch (IOException | InterruptedException e) {
             System.out.println("Erro ao fazer requisição: " + e.getMessage());
+        }
+    }
+
+    private static void listarTodosOsLivros() {
+        if (livrosBuscados.isEmpty()) {
+            System.out.println("Nenhum livro foi buscado ainda.");
+            return;
+        }
+        System.out.println("\n📚 TODOS OS LIVROS BUSCADOS:");
+        for (Livro livro : livrosBuscados) {
+            System.out.println(livro);
+            System.out.println("----------------------------------");
+        }
+    }
+
+    private static void listarLivrosPorIdioma(Scanner scanner) {
+        System.out.print("Digite o código do idioma (ex: pt, en, fr): ");
+        String idioma = scanner.nextLine().trim();
+
+        List<Livro> filtrados = livrosBuscados.stream()
+                .filter(l -> !l.getLanguages().isEmpty() && l.getLanguages().get(0).equalsIgnoreCase(idioma))
+                .toList();
+
+        if (filtrados.isEmpty()) {
+            System.out.println("Nenhum livro encontrado para o idioma: " + idioma);
+        } else {
+            System.out.println("\n📚 LIVROS NO IDIOMA '" + idioma + "':");
+            filtrados.forEach(l -> {
+                System.out.println(l);
+                System.out.println("----------------------------------");
+            });
+        }
+    }
+
+    private static void listarAutores() {
+        if (livrosBuscados.isEmpty()) {
+            System.out.println("Nenhum livro foi buscado ainda.");
+            return;
+        }
+
+        Set<Autor> autores = new HashSet<>();
+        for (Livro livro : livrosBuscados) {
+            if (livro.getAuthors() != null && !livro.getAuthors().isEmpty()) {
+                autores.add(livro.getAuthors().get(0)); // só o primeiro autor
+            }
+        }
+
+        if (autores.isEmpty()) {
+            System.out.println("Nenhum autor encontrado.");
+        } else {
+            System.out.println("\n✍️ AUTORES DOS LIVROS BUSCADOS:");
+            for (Autor autor : autores) {
+                System.out.println(autor);
+            }
+        }
+    }
+
+    private static void listarAutoresVivosEmAno(Scanner scanner) {
+        System.out.print("Digite o ano para consulta (ex: 1900): ");
+        try {
+            int ano = Integer.parseInt(scanner.nextLine().trim());
+
+            Set<Autor> autoresVivos = new HashSet<>();
+            for (Livro livro : livrosBuscados) {
+                if (livro.getAuthors() != null && !livro.getAuthors().isEmpty()) {
+                    Autor autor = livro.getAuthors().get(0);
+                    if (autor.getBirthYear() != null &&
+                            autor.getBirthYear() <= ano &&
+                            (autor.getDeathYear() == null || autor.getDeathYear() > ano)) {
+                        autoresVivos.add(autor);
+                    }
+                }
+            }
+
+            if (autoresVivos.isEmpty()) {
+                System.out.println("Nenhum autor vivo encontrado no ano " + ano);
+            } else {
+                System.out.println("\n👤 AUTORES VIVOS EM " + ano + ":");
+                autoresVivos.forEach(System.out::println);
+            }
+
+        } catch (NumberFormatException e) {
+            System.out.println("Ano inválido.");
         }
     }
 }
@@ -162,16 +257,52 @@ class Livro {
 class Autor {
     private String name;
 
+    @JsonAlias("birth_year")
+    private Integer birthYear;
+
+    @JsonAlias("death_year")
+    private Integer deathYear;
+
     public String getName() {
         return name;
+    }
+
+    public Integer getBirthYear() {
+        return birthYear;
+    }
+
+    public Integer getDeathYear() {
+        return deathYear;
     }
 
     public void setName(String name) {
         this.name = name;
     }
 
+    public void setBirthYear(Integer birthYear) {
+        this.birthYear = birthYear;
+    }
+
+    public void setDeathYear(Integer deathYear) {
+        this.deathYear = deathYear;
+    }
+
     @Override
     public String toString() {
-        return name;
+        return name + " (Nasc: " + birthYear + ", Morte: " + (deathYear != null ? deathYear : "vivo") + ")";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Autor autor)) return false;
+        return Objects.equals(name, autor.name) &&
+                Objects.equals(birthYear, autor.birthYear) &&
+                Objects.equals(deathYear, autor.deathYear);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, birthYear, deathYear);
     }
 }
